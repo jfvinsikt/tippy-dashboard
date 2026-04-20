@@ -372,6 +372,7 @@ function buildRow(item, index) {
     const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(item.ioc)}`;
     const recordedFutureUrl = getRecordedFutureUrl(item);
     const triageUrl = `https://tria.ge/s?q=${encodeURIComponent(item.ioc)}`;
+    const urlscanUrl = `https://pro.urlscan.io/triage?query=${encodeURIComponent(item.ioc)}`;
     const virusTotalUrl = `https://www.virustotal.com/gui/search/${encodeURIComponent(item.ioc)}`;
     const displayTimestamp = item.timestamp.split(" ")[0] || item.timestamp;
 
@@ -393,6 +394,7 @@ function buildRow(item, index) {
                     <a href="${googleUrl}" target="_blank" rel="noopener noreferrer">Search on Google</a>
                     <a href="${recordedFutureUrl}" target="_blank" rel="noopener noreferrer">Search on Recorded Future</a>
                     <a href="${triageUrl}" target="_blank" rel="noopener noreferrer">Search on Triage</a>
+                    <a href="${urlscanUrl}" target="_blank" rel="noopener noreferrer">Search on URLScan</a>
                     <a href="${virusTotalUrl}" target="_blank" rel="noopener noreferrer">Search on Virus Total</a>
                 </div>
             </td>
