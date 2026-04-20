@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tippy Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">Malicious Infrastructure Workspace</p>
+                <h1>Tippy Dashboard</h1>
+                <p class="topbar-subtitle">A pipeline for fresh infrastructure lead analysis.</p>
+            </div>
+        </header>
+        <main class="container">
+            <section class="summary-grid" aria-label="Dashboard summary">
+                <article class="summary-card">
+                    <p class="summary-label">Pending queue</p>
+                    <p id="pending-count" class="summary-value">0</p>
+                    <p class="summary-meta">Open records waiting for review</p>
+                </article>
+                <article class="summary-card">
+                    <p class="summary-label">Completed queue</p>
+                    <p id="completed-count" class="summary-value">0</p>
+                    <p class="summary-meta">Records already processed</p>
+                </article>
+                <article class="summary-card">
+                    <p class="summary-label">Threat Actors</p>
+                    <p id="threat-actor-count" class="summary-value">0</p>
+                    <p class="summary-meta">Number of unique threat actors</p>
+                </article>
+                <article class="summary-card">
+                    <p class="summary-label">Malware Families</p>
+                    <p id="malware-family-count" class="summary-value">0</p>
+                    <p class="summary-meta">Number of unique malware families</p>
+                </article>
+            </section>
+            <div class="tabs" role="tablist" aria-label="Dashboard views">
+                <button id="pending-tab-button" class="tab-button active" type="button" role="tab" aria-selected="true" aria-controls="pending">Pending <span id="pending-tab-count" class="tab-count">0</span></button>
+                <button id="completed-tab-button" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="completed">Completed <span id="completed-tab-count" class="tab-count">0</span></button>
+            </div>
+            <div id="pending" class="tab-content" role="tabpanel" aria-labelledby="pending-tab-button">
+                <section class="panel-card">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">Live queue</p>
+                            <h2>Pending Items</h2>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <div class="controls-group controls-group-search controls-group-inline">
+                            <label for="search-input">Search</label>
+                            <input id="search-input" type="text" placeholder="Search for Record ID, Name, IOC, Country, and Others">
+                        </div>
+                        <div class="controls-group controls-group-inline">
+                            <label for="sort-column">Sort by</label>
+                            <select id="sort-column">
+                                <option value="recordId">Record ID</option>
+                                <option value="recordName">Record Name</option>
+                                <option value="signatureId">Signature ID</option>
+                                <option value="ioc">IOC</option>
+                                <option value="type">Type</option>
+                                <option value="country">Country</option>
+                                <option value="timestamp">Timestamp</option>
+                                <option value="riskScore">Risk Score</option>
+                                <option value="threatActor">Threat Actor</option>
+                                <option value="malware">Malware</option>
+                                <option value="analystNotes">Analyst Notes</option>
+                                <option value="tippyTag">Tippy Tag</option>
+                                <option value="status">Item Status</option>
+                            </select>
+                        </div>
+                        <div class="controls-group controls-group-inline">
+                            <label for="sort-order">Order</label>
+                            <select id="sort-order">
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </div>
+                        <button id="clear-sort-btn" class="clear-btn" type="button">Clear</button>
+                    </div>
+                    <div id="copy-container" class="action-bar" style="display: none;">
+                        <button id="copy-iocs-btn" type="button">Copy IOCs</button>
+                        <button id="start-auto-irl-btn" type="button" disabled title="Auto IRL is not configured yet">Start Auto IRL</button>
+                        <button id="move-to-completed-btn" type="button">Move to Completed</button>
+                    </div>
+                    <p id="pending-feedback" class="feedback-message" aria-live="polite"></p>
+                    <div class="table-card">
+                        <div class="table-card-header">
+                            <div>
+                                <p class="table-kicker">Analyst view</p>
+                                <p class="table-title">Pending IOC records</p>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table id="pending-table">
+                                <thead>
+                                    <tr>
+                                        <th>Select</th>
+                                        <th>Record ID</th>
+                                        <th>Record Name</th>
+                                        <th>Signature ID</th>
+                                        <th>IOC</th>
+                                        <th>Type</th>
+                                        <th>Country</th>
+                                        <th>Timestamp</th>
+                                        <th>Risk Score</th>
+                                        <th>Threat Actor</th>
+                                        <th>Malware</th>
+                                        <th>Analyst Notes</th>
+                                        <th>Tippy Tag</th>
+                                        <th>Item Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pending-tbody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            <div id="completed" class="tab-content" role="tabpanel" aria-labelledby="completed-tab-button" style="display: none;">
+                <section class="panel-card">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">Archive queue</p>
+                            <h2>Completed Items</h2>
+                        </div>
+                    </div>
+                    <div class="controls">
+                        <div class="controls-group controls-group-search controls-group-inline">
+                            <label for="search-input-completed">Search</label>
+                            <input id="search-input-completed" type="text" placeholder="Search for Record ID, Name, IOC, Country, and Others">
+                        </div>
+                        <div class="controls-group controls-group-inline">
+                            <label for="sort-column-completed">Sort by</label>
+                            <select id="sort-column-completed">
+                                <option value="recordId">Record ID</option>
+                                <option value="recordName">Record Name</option>
+                                <option value="signatureId">Signature ID</option>
+                                <option value="ioc">IOC</option>
+                                <option value="type">Type</option>
+                                <option value="country">Country</option>
+                                <option value="timestamp">Timestamp</option>
+                                <option value="riskScore">Risk Score</option>
+                                <option value="threatActor">Threat Actor</option>
+                                <option value="malware">Malware</option>
+                                <option value="analystNotes">Analyst Notes</option>
+                                <option value="tippyTag">Tippy Tag</option>
+                                <option value="status">Item Status</option>
+                            </select>
+                        </div>
+                        <div class="controls-group controls-group-inline">
+                            <label for="sort-order-completed">Order</label>
+                            <select id="sort-order-completed">
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </div>
+                        <button id="clear-sort-btn-completed" class="clear-btn" type="button">Clear</button>
+                    </div>
+                    <div id="copy-container-completed" class="action-bar" style="display: none;">
+                        <button id="copy-iocs-btn-completed" type="button">Copy IOCs</button>
+                        <button id="start-auto-irl-btn-completed" type="button" disabled title="Auto IRL is not configured yet">Start Auto IRL</button>
+                    </div>
+                    <p id="completed-feedback" class="feedback-message" aria-live="polite"></p>
+                    <div class="table-card">
+                        <div class="table-card-header">
+                            <div>
+                                <p class="table-kicker">Analyst view</p>
+                                <p class="table-title">Completed IOC records</p>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table id="completed-table">
+                                <thead>
+                                    <tr>
+                                        <th>Select</th>
+                                        <th>Record ID</th>
+                                        <th>Record Name</th>
+                                        <th>Signature ID</th>
+                                        <th>IOC</th>
+                                        <th>Type</th>
+                                        <th>Country</th>
+                                        <th>Timestamp</th>
+                                        <th>Risk Score</th>
+                                        <th>Threat Actor</th>
+                                        <th>Malware</th>
+                                        <th>Analyst Notes</th>
+                                        <th>Tippy Tag</th>
+                                        <th>Item Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="completed-tbody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <div id="auto-irl-modal" class="modal-overlay" hidden>
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="auto-irl-title">
+            <h2 id="auto-irl-title">Auto IRL</h2>
+            <textarea id="auto-irl-textarea" class="modal-textarea"></textarea>
+            <div class="modal-actions">
+                <button id="auto-irl-discard-btn" type="button" class="clear-btn">Discard</button>
+                <button id="auto-irl-send-btn" type="button">Send</button>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
