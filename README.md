@@ -25,4 +25,3 @@ Open `index.html` in a browser.
 - Dashboard state is saved under the `tippyData` key in browser `localStorage`
 - "Start Auto IRL" is intentionally disabled until that workflow is defined
 - If stored data is malformed, the app falls back to the bundled sample data
-# tippy-dashboard
