@@ -519,12 +519,23 @@ function openAutoIrlModal(tabName) {
         return;
     }
 
-    const modal = document.getElementById("auto-irl-modal");
-    const textarea = document.getElementById("auto-irl-textarea");
+    // Gather prefill values from selected rows
+    const uniqueThreatActors = [...new Set(selectedItems.map(i => i.threatActor).filter(Boolean))].join(", ");
+    const uniqueMalware      = [...new Set(selectedItems.map(i => i.malware).filter(Boolean))].join(", ");
+    const iocList            = selectedItems.map(i => i.ioc).join("\n");
 
-    textarea.value = selectedItems.map((item) => item.ioc).join("\n");
+    // Open the new-project modal with prefilled data
+    const modal = document.getElementById("new-project-modal");
+    document.getElementById("new-proj-title").value          = "";
+    document.getElementById("new-proj-status").value         = "In Progress";
+    document.getElementById("new-proj-threat-actor").value   = uniqueThreatActors;
+    document.getElementById("new-proj-malware").value        = uniqueMalware;
+    document.getElementById("new-proj-infrastructure").value = iocList;
+    document.getElementById("new-proj-victims").value        = "";
+    document.getElementById("new-proj-miq").value            = "";
+    document.getElementById("new-proj-notes").value          = "";
     modal.hidden = false;
-    textarea.focus();
+    document.getElementById("new-proj-title").focus();
 }
 
 function closeAutoIrlModal() {
@@ -567,6 +578,12 @@ function clearSort(tabName) {
 
 function showTab(tabName) {
     state.activeTab = tabName;
+
+    // Always hide the terminal panel when switching to a table tab
+    const terminalPanel = document.getElementById("terminal-panel");
+    const terminalBtn = document.getElementById("auto-irl-terminal-btn");
+    if (terminalPanel) terminalPanel.hidden = true;
+    if (terminalBtn) terminalBtn.classList.remove("is-open");
 
     const pendingPanel = document.getElementById("pending");
     const completedPanel = document.getElementById("completed");
@@ -755,6 +772,356 @@ function bindControls() {
     document.getElementById("move-to-completed-btn").addEventListener("click", moveSelectedToCompleted);
     document.getElementById("auto-irl-discard-btn").addEventListener("click", closeAutoIrlModal);
     document.getElementById("auto-irl-send-btn").addEventListener("click", () => {});
+
+    // ── Add to Existing Auto IRL ───────────────────────────────
+    const addToExistingModal   = document.getElementById("add-to-existing-modal");
+    const addToExistingList    = document.getElementById("add-to-existing-project-list");
+    const addToExistingPreview = document.getElementById("add-to-existing-preview");
+    const addToExistingIocs    = document.getElementById("add-to-existing-iocs");
+    const addToExistingSaveBtn = document.getElementById("add-to-existing-save-btn");
+    let   selectedExistingId   = null;
+
+    function openAddToExistingModal() {
+        const selectedItems = getSelectedItems("pending");
+        if (!selectedItems.length) {
+            setFeedback("pending", "Select at least one IOC before adding to a project.", true);
+            return;
+        }
+
+        const iocText = selectedItems.map(i => i.ioc).join("\n");
+        const pipelineProjects = loadIrlProjects().filter(p => p.status === "pipeline");
+
+        if (!pipelineProjects.length) {
+            setFeedback("pending", "No projects in the Current Auto IRL Pipeline.", true);
+            return;
+        }
+
+        selectedExistingId = null;
+        addToExistingSaveBtn.disabled = true;
+        addToExistingPreview.hidden = true;
+        addToExistingIocs.value = iocText;
+
+        addToExistingList.innerHTML = pipelineProjects.map(p => `
+            <button class="add-to-existing-item" type="button" data-project-id="${escapeHtml(p.id)}">
+                <span class="add-to-existing-radio"></span>
+                <span class="add-to-existing-item-info">
+                    <span class="add-to-existing-item-name">${escapeHtml(p.title)}</span>
+                    <span class="add-to-existing-item-meta">${countIocs(p.infrastructure)} IOCs &middot; ${escapeHtml(p.updatedLabel)} &middot; ${escapeHtml(p.pipelineStatus)}</span>
+                </span>
+            </button>
+        `).join("");
+
+        addToExistingList.querySelectorAll(".add-to-existing-item").forEach(btn => {
+            btn.addEventListener("click", () => {
+                addToExistingList.querySelectorAll(".add-to-existing-item").forEach(b => b.classList.remove("is-selected"));
+                btn.classList.add("is-selected");
+                selectedExistingId = btn.dataset.projectId;
+                addToExistingSaveBtn.disabled = false;
+                addToExistingPreview.hidden = false;
+            });
+        });
+
+        addToExistingModal.hidden = false;
+    }
+
+    function closeAddToExistingModal() {
+        addToExistingModal.hidden = true;
+        selectedExistingId = null;
+    }
+
+    document.getElementById("add-to-existing-irl-btn").addEventListener("click", openAddToExistingModal);
+    document.getElementById("add-to-existing-discard-btn").addEventListener("click", closeAddToExistingModal);
+    document.getElementById("add-to-existing-close-btn").addEventListener("click", closeAddToExistingModal);
+
+    addToExistingSaveBtn.addEventListener("click", () => {
+        if (!selectedExistingId) return;
+        const projects = loadIrlProjects();
+        const project = projects.find(p => p.id === selectedExistingId);
+        if (!project) return;
+
+        const newIocs = addToExistingIocs.value.trim();
+        project.infrastructure = project.infrastructure
+            ? project.infrastructure + "\n" + newIocs
+            : newIocs;
+        project.updatedLabel = "Updated just now";
+
+        saveIrlProjects(projects);
+        renderIrlProjects();
+        closeAddToExistingModal();
+        setFeedback("pending", `IOCs added to "${project.title}".`);
+        setTimeout(() => setFeedback("pending", ""), 3000);
+    });
+
+    addToExistingModal.addEventListener("click", (event) => {
+        if (event.target === addToExistingModal) closeAddToExistingModal();
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !addToExistingModal.hidden) closeAddToExistingModal();
+    });
+
+    const terminalBtn = document.getElementById("auto-irl-terminal-btn");
+    const terminalPanel = document.getElementById("terminal-panel");
+    const terminalCloseBtn = document.getElementById("terminal-close-btn");
+
+    terminalBtn.addEventListener("click", () => {
+        const isOpen = !terminalPanel.hidden;
+        terminalPanel.hidden = isOpen;
+        terminalBtn.classList.toggle("is-open", !isOpen);
+        // Always hide both table panels when terminal is open
+        document.getElementById("pending").style.display = "none";
+        document.getElementById("completed").style.display = "none";
+        // Restore active tab when closing
+        if (isOpen) showTab(state.activeTab);
+    });
+
+    terminalCloseBtn.addEventListener("click", () => {
+        terminalPanel.hidden = true;
+        terminalBtn.classList.remove("is-open");
+        showTab(state.activeTab);
+    });
+
+    const irlPipelineTab = document.getElementById("irl-pipeline-tab");
+    const irlPublishedTab = document.getElementById("irl-published-tab");
+    const irlPipelinePanel = document.getElementById("irl-pipeline-panel");
+    const irlPublishedPanel = document.getElementById("irl-published-panel");
+
+    irlPipelineTab.addEventListener("click", () => {
+        irlPipelineTab.classList.add("active");
+        irlPublishedTab.classList.remove("active");
+        irlPipelinePanel.classList.add("active");
+        irlPublishedPanel.classList.remove("active");
+    });
+
+    irlPublishedTab.addEventListener("click", () => {
+        irlPublishedTab.classList.add("active");
+        irlPipelineTab.classList.remove("active");
+        irlPublishedPanel.classList.add("active");
+        irlPipelinePanel.classList.remove("active");
+    });
+
+    // ── IRL Projects data ──────────────────────────────────────
+    const IRL_STORAGE_KEY = "tippyIrlProjects_v2";
+
+    const DEFAULT_IRL_PROJECTS = [
+        { id: "p1", title: "Malware 1 New Infrastructure",         iocCount: 12, updatedLabel: "Updated 2h ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
+        { id: "p2", title: "Actor B C2 Expansion — Q4",            iocCount: 8,  updatedLabel: "Updated 5h ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
+        { id: "p3", title: "Phishing Wave — EU Targets",           iocCount: 23, updatedLabel: "Updated 1d ago",  status: "pipeline", pipelineStatus: "In Review",   threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
+        { id: "p4", title: "Ransomware Group X — New Domains",     iocCount: 5,  updatedLabel: "Updated 2d ago",  status: "pipeline", pipelineStatus: "In Review",   threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
+        { id: "p5", title: "SIG007 Dropper Infrastructure",        iocCount: 17, updatedLabel: "Updated 3d ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
+        { id: "p6", title: "Actor A — Initial Access Broker Network", iocCount: 34, updatedLabel: "Ready 4d ago",  status: "published", pipelineStatus: "Ready", threatActor: "", malware: "", infrastructure: "", victims: "", miq: "", notes: "" },
+        { id: "p7", title: "Malware Z — Loader Infrastructure",    iocCount: 19, updatedLabel: "Ready 1w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
+        { id: "p8", title: "CN Threat Cluster — Spearphish Domains", iocCount: 11, updatedLabel: "Ready 2w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "", infrastructure: "", victims: "", miq: "", notes: "" },
+        { id: "p9", title: "RU APT — Credential Harvesting URLs",  iocCount: 28, updatedLabel: "Ready 3w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
+        { id: "p10", title: "SIG003 — Bad Domain Cluster Report",  iocCount: 9,  updatedLabel: "Ready 1mo ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",  infrastructure: "", victims: "", miq: "", notes: "" }
+    ];
+
+    function loadIrlProjects() {
+        try {
+            const raw = localStorage.getItem(IRL_STORAGE_KEY);
+            return raw ? JSON.parse(raw) : DEFAULT_IRL_PROJECTS;
+        } catch {
+            return DEFAULT_IRL_PROJECTS;
+        }
+    }
+
+    function saveIrlProjects(projects) {
+        localStorage.setItem(IRL_STORAGE_KEY, JSON.stringify(projects));
+    }
+
+    function getPipelineStatusClass(pipelineStatus) {
+        if (pipelineStatus === "In Progress") return "irl-status-active";
+        if (pipelineStatus === "In Review")   return "irl-status-review";
+        return "irl-status-published";
+    }
+
+    function countIocs(infrastructure) {
+        if (!infrastructure || !infrastructure.trim()) return 0;
+        return new Set(
+            infrastructure.split("\n")
+                .map(line => line.trim())
+                .filter(Boolean)
+        ).size;
+    }
+
+    function buildProjectRow(project) {
+        const pillClass = getPipelineStatusClass(project.pipelineStatus);
+        const iocCount = countIocs(project.infrastructure);
+
+        return `
+            <button class="irl-project-item" type="button" data-project-id="${escapeHtml(project.id)}">
+                <div class="irl-project-main">
+                    <span class="irl-project-name">${escapeHtml(project.title)}</span>
+                    <span class="irl-project-meta">
+                        ${iocCount} IOC${iocCount !== 1 ? "s" : ""} &middot; ${escapeHtml(project.updatedLabel)}
+                    </span>
+                </div>
+                <div class="irl-project-right">
+                    <span class="irl-status-pill ${pillClass}">${escapeHtml(project.pipelineStatus)}</span>
+                    <span class="irl-chevron">›</span>
+                </div>
+            </button>
+        `;
+    }
+
+    function renderIrlProjects() {
+        const projects = loadIrlProjects();
+        const pipelineProjects = projects.filter(p => p.status === "pipeline");
+        const publishedProjects = projects.filter(p => p.status === "published");
+
+        irlPipelinePanel.querySelector(".irl-project-list").innerHTML =
+            pipelineProjects.map(buildProjectRow).join("");
+        irlPublishedPanel.querySelector(".irl-project-list").innerHTML =
+            publishedProjects.map(buildProjectRow).join("");
+
+        document.querySelectorAll(".irl-project-item").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const projectId = btn.dataset.projectId;
+                const projects = loadIrlProjects();
+                const project = projects.find(p => p.id === projectId);
+                if (project) openProjectModal(project);
+            });
+        });
+    }
+
+    // ── Project modal ──────────────────────────────────────────
+    const projectModal = document.getElementById("project-config-modal");
+    const projectModalTitle = document.getElementById("project-modal-title");
+    let activeProjectId = null;
+
+    function openProjectModal(project) {
+        activeProjectId = project.id;
+        projectModalTitle.textContent = project.title;
+        document.getElementById("proj-title").value           = project.title;
+        document.getElementById("proj-status").value          = project.pipelineStatus;
+        document.getElementById("proj-threat-actor").value    = project.threatActor;
+        document.getElementById("proj-malware").value         = project.malware;
+        document.getElementById("proj-infrastructure").value  = project.infrastructure;
+        document.getElementById("proj-victims").value         = project.victims;
+        document.getElementById("proj-miq").value             = project.miq;
+        document.getElementById("proj-notes").value           = project.notes;
+        projectModal.hidden = false;
+    }
+
+    function closeProjectModal() {
+        projectModal.hidden = true;
+        activeProjectId = null;
+    }
+
+    document.getElementById("project-discard-btn").addEventListener("click", closeProjectModal);
+    document.getElementById("project-discard-btn-2").addEventListener("click", closeProjectModal);
+
+    document.getElementById("project-save-btn").addEventListener("click", () => {
+        if (!activeProjectId) return;
+
+        const projects = loadIrlProjects();
+        const project = projects.find(p => p.id === activeProjectId);
+        if (!project) return;
+
+        const newTitle = document.getElementById("proj-title").value.trim() || project.title;
+        const newStatus = document.getElementById("proj-status").value;
+        project.title          = newTitle;
+        project.pipelineStatus = newStatus;
+        project.status         = newStatus === "Ready" ? "published" : "pipeline";
+        project.threatActor    = document.getElementById("proj-threat-actor").value.trim();
+        project.malware        = document.getElementById("proj-malware").value.trim();
+        project.infrastructure = document.getElementById("proj-infrastructure").value.trim();
+        project.victims        = document.getElementById("proj-victims").value.trim();
+        project.miq            = document.getElementById("proj-miq").value.trim();
+        project.notes          = document.getElementById("proj-notes").value.trim();
+        project.updatedLabel   = "Updated just now";
+
+        saveIrlProjects(projects);
+        renderIrlProjects();
+        closeProjectModal();
+    });
+
+    projectModal.addEventListener("click", (event) => {
+        if (event.target === projectModal) closeProjectModal();
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !projectModal.hidden) closeProjectModal();
+    });
+
+    renderIrlProjects();
+
+    renderIrlProjects();
+
+    // ── New Project modal ──────────────────────────────────────
+    const newProjectModal = document.getElementById("new-project-modal");
+
+    function openNewProjectModal() {
+        document.getElementById("new-proj-title").value          = "";
+        document.getElementById("new-proj-status").value         = "In Progress";
+        document.getElementById("new-proj-threat-actor").value   = "";
+        document.getElementById("new-proj-malware").value        = "";
+        document.getElementById("new-proj-infrastructure").value = "";
+        document.getElementById("new-proj-victims").value        = "";
+        document.getElementById("new-proj-miq").value            = "";
+        document.getElementById("new-proj-notes").value          = "";
+        newProjectModal.hidden = false;
+    }
+
+    function closeNewProjectModal() {
+        newProjectModal.hidden = true;
+    }
+
+    document.getElementById("new-project-btn").addEventListener("click", openNewProjectModal);
+    document.getElementById("new-project-discard-btn").addEventListener("click", closeNewProjectModal);
+    document.getElementById("new-project-discard-btn-x").addEventListener("click", closeNewProjectModal);
+
+    document.getElementById("new-project-save-btn").addEventListener("click", () => {
+        const title = document.getElementById("new-proj-title").value.trim();
+        if (!title) {
+            document.getElementById("new-proj-title").focus();
+            return;
+        }
+        const newStatus = document.getElementById("new-proj-status").value;
+        const newProject = {
+            id:             "p" + Date.now(),
+            title,
+            iocCount:       0,
+            updatedLabel:   "Created just now",
+            status:         newStatus === "Ready" ? "published" : "pipeline",
+            pipelineStatus: newStatus,
+            threatActor:    document.getElementById("new-proj-threat-actor").value.trim(),
+            malware:        document.getElementById("new-proj-malware").value.trim(),
+            infrastructure: document.getElementById("new-proj-infrastructure").value.trim(),
+            victims:        document.getElementById("new-proj-victims").value.trim(),
+            miq:            document.getElementById("new-proj-miq").value.trim(),
+            notes:          document.getElementById("new-proj-notes").value.trim()
+        };
+        const projects = loadIrlProjects();
+        projects.push(newProject);
+        saveIrlProjects(projects);
+        renderIrlProjects();
+        closeNewProjectModal();
+
+        // Open the terminal panel and navigate to the right tab so user sees the new project
+        const terminalPanelEl = document.getElementById("terminal-panel");
+        const terminalBtnEl   = document.getElementById("auto-irl-terminal-btn");
+        if (terminalPanelEl.hidden) {
+            terminalPanelEl.hidden = false;
+            terminalBtnEl.classList.add("is-open");
+            document.getElementById("pending").style.display = "none";
+            document.getElementById("completed").style.display = "none";
+        }
+
+        if (newStatus === "Ready") {
+            irlPublishedTab.click();
+        } else {
+            irlPipelineTab.click();
+        }
+    });
+
+    newProjectModal.addEventListener("click", (event) => {
+        if (event.target === newProjectModal) closeNewProjectModal();
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !newProjectModal.hidden) closeNewProjectModal();
+    });
 
     const autoIrlModal = document.getElementById("auto-irl-modal");
     autoIrlModal.addEventListener("click", (event) => {
