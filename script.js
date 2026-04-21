@@ -377,7 +377,7 @@ function buildRow(item, index) {
     const displayTimestamp = item.timestamp.split(" ")[0] || item.timestamp;
 
     return `
-        <tr data-index="${index}">
+        <tr data-index="${index}"${item.selected ? ' class="row-selected"' : ''}>
             <td><input type="checkbox" class="row-select" data-index="${index}" ${item.selected ? "checked" : ""} aria-label="Select record ${escapeHtml(item.recordId)}"></td>
             <td><a class="record-link" href="${recordUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.recordId)}</a></td>
             <td>${escapeHtml(item.recordName)}</td>
@@ -404,12 +404,13 @@ function buildRow(item, index) {
             <td><span class="${getRiskPillClass(item.riskScore)}">${escapeHtml(item.riskScore)}</span></td>
             <td>${escapeHtml(item.threatActor)}</td>
             <td>${escapeHtml(item.malware)}</td>
-            <td>
+            <td class="notes-cell">
                 <input
                     type="text"
                     class="notes-input"
                     data-index="${index}"
                     value="${escapeHtml(item.analystNotes)}"
+                    placeholder="Add note…"
                     aria-label="Analyst notes for record ${escapeHtml(item.recordId)}"
                 >
             </td>
@@ -422,10 +423,21 @@ function buildRow(item, index) {
 function renderTab(tabName) {
     const config = getTabConfig(tabName);
     const visibleItems = getVisibleItems(tabName);
+    const totalItems = data.filter(item => item.status === (tabName === "completed" ? "completed" : "pending")).length;
+    const showing = visibleItems.length;
 
     config.tbody.innerHTML = visibleItems.length
         ? visibleItems.map(({ item, index }) => buildRow(item, index)).join("")
         : buildEmptyStateRow(config.emptyMessage);
+
+    const countEl = document.getElementById(`${tabName}-record-count`);
+    if (countEl) {
+        if (showing === totalItems) {
+            countEl.innerHTML = `<span class="record-count-highlight">${showing}</span> record${showing !== 1 ? "s" : ""}`;
+        } else {
+            countEl.innerHTML = `<span class="record-count-highlight">${showing}</span> of ${totalItems} records`;
+        }
+    }
 
     updateCopyButtonVisibility();
 }
@@ -604,6 +616,8 @@ function handleTableClick(event) {
     if (rowSelect) {
         const index = Number.parseInt(rowSelect.dataset.index, 10);
         data[index].selected = rowSelect.checked;
+        const row = rowSelect.closest("tr");
+        if (row) row.classList.toggle("row-selected", rowSelect.checked);
         saveData();
         updateCopyButtonVisibility();
         return;
