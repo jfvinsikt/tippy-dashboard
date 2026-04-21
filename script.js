@@ -523,6 +523,7 @@ function openAutoIrlModal(tabName) {
     const uniqueThreatActors = [...new Set(selectedItems.map(i => i.threatActor).filter(Boolean))].join(", ");
     const uniqueMalware      = [...new Set(selectedItems.map(i => i.malware).filter(Boolean))].join(", ");
     const iocList            = selectedItems.map(i => i.ioc).join("\n");
+    const uniqueSigIds       = [...new Set(selectedItems.map(i => i.signatureId).filter(Boolean))].join("\n");
 
     // Open the new-project modal with prefilled data
     const modal = document.getElementById("new-project-modal");
@@ -534,6 +535,7 @@ function openAutoIrlModal(tabName) {
     document.getElementById("new-proj-victims").value        = "";
     document.getElementById("new-proj-miq").value            = "";
     document.getElementById("new-proj-notes").value          = "";
+    document.getElementById("new-proj-sources").value        = uniqueSigIds;
     modal.hidden = false;
     document.getElementById("new-proj-title").focus();
 }
@@ -779,7 +781,8 @@ function bindControls() {
     const addToExistingPreview = document.getElementById("add-to-existing-preview");
     const addToExistingIocs    = document.getElementById("add-to-existing-iocs");
     const addToExistingSaveBtn = document.getElementById("add-to-existing-save-btn");
-    let   selectedExistingId   = null;
+    let selectedExistingId  = null;
+    let pendingSigIds       = "";
 
     function openAddToExistingModal() {
         const selectedItems = getSelectedItems("pending");
@@ -789,6 +792,7 @@ function bindControls() {
         }
 
         const iocText = selectedItems.map(i => i.ioc).join("\n");
+        pendingSigIds = [...new Set(selectedItems.map(i => i.signatureId).filter(Boolean))].join("\n");
         const pipelineProjects = loadIrlProjects().filter(p => p.status === "pipeline");
 
         if (!pipelineProjects.length) {
@@ -827,6 +831,7 @@ function bindControls() {
     function closeAddToExistingModal() {
         addToExistingModal.hidden = true;
         selectedExistingId = null;
+        pendingSigIds = "";
     }
 
     document.getElementById("add-to-existing-irl-btn").addEventListener("click", openAddToExistingModal);
@@ -843,6 +848,9 @@ function bindControls() {
         project.infrastructure = project.infrastructure
             ? project.infrastructure + "\n" + newIocs
             : newIocs;
+        project.sources = project.sources
+            ? project.sources + "\n" + pendingSigIds
+            : pendingSigIds;
         project.updatedLabel = "Updated just now";
 
         saveIrlProjects(projects);
@@ -904,16 +912,16 @@ function bindControls() {
     const IRL_STORAGE_KEY = "tippyIrlProjects_v2";
 
     const DEFAULT_IRL_PROJECTS = [
-        { id: "p1", title: "Malware 1 New Infrastructure",         iocCount: 12, updatedLabel: "Updated 2h ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
-        { id: "p2", title: "Actor B C2 Expansion — Q4",            iocCount: 8,  updatedLabel: "Updated 5h ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
-        { id: "p3", title: "Phishing Wave — EU Targets",           iocCount: 23, updatedLabel: "Updated 1d ago",  status: "pipeline", pipelineStatus: "In Review",   threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
-        { id: "p4", title: "Ransomware Group X — New Domains",     iocCount: 5,  updatedLabel: "Updated 2d ago",  status: "pipeline", pipelineStatus: "In Review",   threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
-        { id: "p5", title: "SIG007 Dropper Infrastructure",        iocCount: 17, updatedLabel: "Updated 3d ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
-        { id: "p6", title: "Actor A — Initial Access Broker Network", iocCount: 34, updatedLabel: "Ready 4d ago",  status: "published", pipelineStatus: "Ready", threatActor: "", malware: "", infrastructure: "", victims: "", miq: "", notes: "" },
-        { id: "p7", title: "Malware Z — Loader Infrastructure",    iocCount: 19, updatedLabel: "Ready 1w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
-        { id: "p8", title: "CN Threat Cluster — Spearphish Domains", iocCount: 11, updatedLabel: "Ready 2w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "", infrastructure: "", victims: "", miq: "", notes: "" },
-        { id: "p9", title: "RU APT — Credential Harvesting URLs",  iocCount: 28, updatedLabel: "Ready 3w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "" },
-        { id: "p10", title: "SIG003 — Bad Domain Cluster Report",  iocCount: 9,  updatedLabel: "Ready 1mo ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",  infrastructure: "", victims: "", miq: "", notes: "" }
+        { id: "p1", title: "Malware 1 New Infrastructure",         iocCount: 12, updatedLabel: "Updated 2h ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
+        { id: "p2", title: "Actor B C2 Expansion — Q4",            iocCount: 8,  updatedLabel: "Updated 5h ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
+        { id: "p3", title: "Phishing Wave — EU Targets",           iocCount: 23, updatedLabel: "Updated 1d ago",  status: "pipeline", pipelineStatus: "In Review",   threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
+        { id: "p4", title: "Ransomware Group X — New Domains",     iocCount: 5,  updatedLabel: "Updated 2d ago",  status: "pipeline", pipelineStatus: "In Review",   threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
+        { id: "p5", title: "SIG007 Dropper Infrastructure",        iocCount: 17, updatedLabel: "Updated 3d ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
+        { id: "p6", title: "Actor A — Initial Access Broker Network", iocCount: 34, updatedLabel: "Ready 4d ago",  status: "published", pipelineStatus: "Ready", threatActor: "", malware: "", infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
+        { id: "p7", title: "Malware Z — Loader Infrastructure",    iocCount: 19, updatedLabel: "Ready 1w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
+        { id: "p8", title: "CN Threat Cluster — Spearphish Domains", iocCount: 11, updatedLabel: "Ready 2w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "", infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
+        { id: "p9", title: "RU APT — Credential Harvesting URLs",  iocCount: 28, updatedLabel: "Ready 3w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
+        { id: "p10", title: "SIG003 — Bad Domain Cluster Report",  iocCount: 9,  updatedLabel: "Ready 1mo ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",  infrastructure: "", victims: "", miq: "", notes: "", sources: "" }
     ];
 
     function loadIrlProjects() {
@@ -1000,6 +1008,7 @@ function bindControls() {
         document.getElementById("proj-victims").value         = project.victims;
         document.getElementById("proj-miq").value             = project.miq;
         document.getElementById("proj-notes").value           = project.notes;
+        document.getElementById("proj-sources").value         = project.sources || "";
         projectModal.hidden = false;
     }
 
@@ -1029,6 +1038,7 @@ function bindControls() {
         project.victims        = document.getElementById("proj-victims").value.trim();
         project.miq            = document.getElementById("proj-miq").value.trim();
         project.notes          = document.getElementById("proj-notes").value.trim();
+        project.sources        = document.getElementById("proj-sources").value.trim();
         project.updatedLabel   = "Updated just now";
 
         saveIrlProjects(projects);
@@ -1060,6 +1070,7 @@ function bindControls() {
         document.getElementById("new-proj-victims").value        = "";
         document.getElementById("new-proj-miq").value            = "";
         document.getElementById("new-proj-notes").value          = "";
+        document.getElementById("new-proj-sources").value        = "";
         newProjectModal.hidden = false;
     }
 
@@ -1090,7 +1101,8 @@ function bindControls() {
             infrastructure: document.getElementById("new-proj-infrastructure").value.trim(),
             victims:        document.getElementById("new-proj-victims").value.trim(),
             miq:            document.getElementById("new-proj-miq").value.trim(),
-            notes:          document.getElementById("new-proj-notes").value.trim()
+            notes:          document.getElementById("new-proj-notes").value.trim(),
+            sources:        document.getElementById("new-proj-sources").value.trim()
         };
         const projects = loadIrlProjects();
         projects.push(newProject);
