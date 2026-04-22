@@ -1,0 +1,41 @@
+[
+  {
+    "id": "TA0001",
+    "label": "Initial Access",
+    "type": "tactic",
+    "children": [
+      {
+        "id": "T1566",
+        "label": "Phishing",
+        "type": "technique",
+        "children": [
+          { "id": "T1566.001", "label": "Spearphishing Attachment", "type": "sub-technique" },
+          { "id": "T1566.002", "label": "Spearphishing Link", "type": "sub-technique" },
+          { "id": "T1566.003", "label": "Spearphishing via Service", "type": "sub-technique" }
+        ]
+      },
+      {
+        "id": "T1190",
+        "label": "Exploit Public-Facing Application",
+        "type": "technique",
+        "children": []
+      }
+    ]
+  },
+  {
+    "id": "TA0002",
+    "label": "Execution",
+    "type": "tactic",
+    "children": [
+      {
+        "id": "T1059",
+        "label": "Command and Scripting Interpreter",
+        "type": "technique",
+        "children": [
+          { "id": "T1059.001", "label": "PowerShell", "type": "sub-technique" },
+          { "id": "T1059.003", "label": "Windows Command Shell", "type": "sub-technique" }
+        ]
+      }
+    ]
+  }
+]

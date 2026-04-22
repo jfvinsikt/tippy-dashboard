@@ -223,12 +223,16 @@
 
                 <div class="irl-tabs-row">
                     <div class="irl-tabs">
-                        <button id="irl-pipeline-tab" class="irl-tab-btn active" type="button">Current Auto IRL Pipeline</button>
-                        <button id="irl-published-tab" class="irl-tab-btn" type="button">Ready</button>
+                        <button id="irl-pipeline-tab" class="irl-tab-btn active" type="button">In Progress <span id="irl-pipeline-count" class="tab-count">0</span></button>
+                        <button id="irl-review-tab" class="irl-tab-btn" type="button">In Review <span id="irl-review-count" class="tab-count">0</span></button>
+                        <button id="irl-published-tab" class="irl-tab-btn" type="button">Ready <span id="irl-ready-count" class="tab-count">0</span></button>
                     </div>
                 </div>
 
                 <div id="irl-pipeline-panel" class="irl-tab-content active">
+                    <div class="irl-project-list"></div>
+                </div>
+                <div id="irl-review-panel" class="irl-tab-content">
                     <div class="irl-project-list"></div>
                 </div>
                 <div id="irl-published-panel" class="irl-tab-content">
@@ -288,6 +292,10 @@
                     </div>
                 </div>
                 <div class="project-field">
+                    <label class="project-field-label" for="new-proj-hashes">Hashes</label>
+                    <textarea id="new-proj-hashes" class="project-textarea" placeholder="e.g. MD5, SHA1, SHA256 hashes, one per line…"></textarea>
+                </div>
+                <div class="project-field">
                     <label class="project-field-label" for="new-proj-miq">Malware Intelligence Query</label>
                     <textarea id="new-proj-miq" class="project-textarea" placeholder="Enter malware intelligence query…"></textarea>
                 </div>
@@ -298,6 +306,22 @@
                 <div class="project-field">
                     <label class="project-field-label" for="new-proj-sources">Sources</label>
                     <textarea id="new-proj-sources" class="project-textarea" placeholder="e.g. report URLs, intel feeds, internal references…"></textarea>
+                </div>
+                <div class="project-field">
+                    <label class="project-field-label">MITRE ATT&amp;CK</label>
+                    <div class="mitre-dropdown" id="new-mitre-dropdown">
+                        <button type="button" class="mitre-trigger" id="new-mitre-trigger">
+                            <span class="mitre-trigger-label" id="new-mitre-label">Select techniques…</span>
+                            <span class="mitre-trigger-arrow">›</span>
+                        </button>
+                        <div class="mitre-panel" id="new-mitre-panel" hidden>
+                            <div class="mitre-search-wrap">
+                                <input type="text" class="mitre-search" id="new-mitre-search" placeholder="Search…">
+                            </div>
+                            <div class="mitre-tree" id="new-mitre-tree"></div>
+                        </div>
+                    </div>
+                    <div class="mitre-tags" id="new-mitre-tags"></div>
                 </div>
             </div>
             <div class="project-modal-actions">
@@ -347,6 +371,10 @@
                     </div>
                 </div>
                 <div class="project-field">
+                    <label class="project-field-label" for="proj-hashes">Hashes</label>
+                    <textarea id="proj-hashes" class="project-textarea" placeholder="e.g. MD5, SHA1, SHA256 hashes, one per line…"></textarea>
+                </div>
+                <div class="project-field">
                     <label class="project-field-label" for="proj-miq">Malware Intelligence Query</label>
                     <textarea id="proj-miq" class="project-textarea" placeholder="Enter malware intelligence query…"></textarea>
                 </div>
@@ -357,6 +385,26 @@
                 <div class="project-field">
                     <label class="project-field-label" for="proj-sources">Sources</label>
                     <textarea id="proj-sources" class="project-textarea" placeholder="e.g. report URLs, intel feeds, internal references…"></textarea>
+                </div>
+                <div class="project-field" id="irl-suggestion-section" hidden>
+                    <label class="project-field-label" for="proj-irl-suggestion">Auto IRL Text Suggestion</label>
+                    <textarea id="proj-irl-suggestion" class="project-textarea irl-suggestion-textarea"></textarea>
+                </div>
+                <div class="project-field">
+                    <label class="project-field-label">MITRE ATT&amp;CK</label>
+                    <div class="mitre-dropdown" id="edit-mitre-dropdown">
+                        <button type="button" class="mitre-trigger" id="edit-mitre-trigger">
+                            <span class="mitre-trigger-label" id="edit-mitre-label">Select techniques…</span>
+                            <span class="mitre-trigger-arrow">›</span>
+                        </button>
+                        <div class="mitre-panel" id="edit-mitre-panel" hidden>
+                            <div class="mitre-search-wrap">
+                                <input type="text" class="mitre-search" id="edit-mitre-search" placeholder="Search…">
+                            </div>
+                            <div class="mitre-tree" id="edit-mitre-tree"></div>
+                        </div>
+                    </div>
+                    <div class="mitre-tags" id="edit-mitre-tags"></div>
                 </div>
             </div>
             <div class="project-modal-actions">
@@ -369,7 +417,7 @@
         <div class="modal-card project-modal-card" role="dialog" aria-modal="true" aria-labelledby="add-to-existing-title">
             <div class="project-modal-header">
                 <div>
-                    <p class="panel-kicker">Current Auto IRL Pipeline</p>
+                    <p class="panel-kicker">Auto IRL</p>
                     <h2 id="add-to-existing-title">Add to Existing Project</h2>
                 </div>
                 <button id="add-to-existing-close-btn" class="terminal-close" type="button" aria-label="Close">✕</button>

@@ -537,6 +537,16 @@ function openAutoIrlModal(tabName) {
     document.getElementById("new-proj-notes").value          = "";
     document.getElementById("new-proj-sources").value        = uniqueSigIds;
     modal.hidden = false;
+    if (window.__editMitreInstance) {
+        // reset the new-project mitre instance
+        const newInst = document.getElementById("new-mitre-panel") &&
+            { selectedIds: new Set(), tagsEl: document.getElementById("new-mitre-tags"),
+              triggerEl: document.getElementById("new-mitre-trigger"), labelEl: document.getElementById("new-mitre-label"),
+              panelEl: document.getElementById("new-mitre-panel"), searchEl: document.getElementById("new-mitre-search"),
+              treeEl: document.getElementById("new-mitre-tree") };
+        if (newInst) { newInst.selectedIds = new Set(); newInst.tagsEl.innerHTML = ""; newInst.labelEl.textContent = "Select techniques…"; newInst.labelEl.classList.remove("has-selection"); }
+        window.__pendingNewMitre = [];
+    }
     document.getElementById("new-proj-title").focus();
 }
 
@@ -793,7 +803,7 @@ function bindControls() {
 
         const iocText = selectedItems.map(i => i.ioc).join("\n");
         pendingSigIds = [...new Set(selectedItems.map(i => i.signatureId).filter(Boolean))].join("\n");
-        const pipelineProjects = loadIrlProjects().filter(p => p.status === "pipeline");
+        const pipelineProjects = loadIrlProjects().filter(p => p.pipelineStatus === "In Progress" || p.pipelineStatus === "In Review");
 
         if (!pipelineProjects.length) {
             setFeedback("pending", "No projects in the Current Auto IRL Pipeline.", true);
@@ -889,39 +899,41 @@ function bindControls() {
         showTab(state.activeTab);
     });
 
-    const irlPipelineTab = document.getElementById("irl-pipeline-tab");
+    const irlPipelineTab  = document.getElementById("irl-pipeline-tab");
+    const irlReviewTab    = document.getElementById("irl-review-tab");
     const irlPublishedTab = document.getElementById("irl-published-tab");
-    const irlPipelinePanel = document.getElementById("irl-pipeline-panel");
+    const irlPipelinePanel  = document.getElementById("irl-pipeline-panel");
+    const irlReviewPanel    = document.getElementById("irl-review-panel");
     const irlPublishedPanel = document.getElementById("irl-published-panel");
 
-    irlPipelineTab.addEventListener("click", () => {
-        irlPipelineTab.classList.add("active");
-        irlPublishedTab.classList.remove("active");
-        irlPipelinePanel.classList.add("active");
-        irlPublishedPanel.classList.remove("active");
-    });
+    const allIrlTabs   = [irlPipelineTab, irlReviewTab, irlPublishedTab];
+    const allIrlPanels = [irlPipelinePanel, irlReviewPanel, irlPublishedPanel];
 
-    irlPublishedTab.addEventListener("click", () => {
-        irlPublishedTab.classList.add("active");
-        irlPipelineTab.classList.remove("active");
-        irlPublishedPanel.classList.add("active");
-        irlPipelinePanel.classList.remove("active");
-    });
+    function switchIrlTab(activeTab, activePanel) {
+        allIrlTabs.forEach(t => t.classList.remove("active"));
+        allIrlPanels.forEach(p => p.classList.remove("active"));
+        activeTab.classList.add("active");
+        activePanel.classList.add("active");
+    }
+
+    irlPipelineTab.addEventListener("click",  () => switchIrlTab(irlPipelineTab,  irlPipelinePanel));
+    irlReviewTab.addEventListener("click",    () => switchIrlTab(irlReviewTab,    irlReviewPanel));
+    irlPublishedTab.addEventListener("click", () => switchIrlTab(irlPublishedTab, irlPublishedPanel));
 
     // ── IRL Projects data ──────────────────────────────────────
     const IRL_STORAGE_KEY = "tippyIrlProjects_v2";
 
     const DEFAULT_IRL_PROJECTS = [
-        { id: "p1", title: "Malware 1 New Infrastructure",         iocCount: 12, updatedLabel: "Updated 2h ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
-        { id: "p2", title: "Actor B C2 Expansion — Q4",            iocCount: 8,  updatedLabel: "Updated 5h ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
-        { id: "p3", title: "Phishing Wave — EU Targets",           iocCount: 23, updatedLabel: "Updated 1d ago",  status: "pipeline", pipelineStatus: "In Review",   threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
-        { id: "p4", title: "Ransomware Group X — New Domains",     iocCount: 5,  updatedLabel: "Updated 2d ago",  status: "pipeline", pipelineStatus: "In Review",   threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
-        { id: "p5", title: "SIG007 Dropper Infrastructure",        iocCount: 17, updatedLabel: "Updated 3d ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
-        { id: "p6", title: "Actor A — Initial Access Broker Network", iocCount: 34, updatedLabel: "Ready 4d ago",  status: "published", pipelineStatus: "Ready", threatActor: "", malware: "", infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
-        { id: "p7", title: "Malware Z — Loader Infrastructure",    iocCount: 19, updatedLabel: "Ready 1w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
-        { id: "p8", title: "CN Threat Cluster — Spearphish Domains", iocCount: 11, updatedLabel: "Ready 2w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "", infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
-        { id: "p9", title: "RU APT — Credential Harvesting URLs",  iocCount: 28, updatedLabel: "Ready 3w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", notes: "", sources: "" },
-        { id: "p10", title: "SIG003 — Bad Domain Cluster Report",  iocCount: 9,  updatedLabel: "Ready 1mo ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",  infrastructure: "", victims: "", miq: "", notes: "", sources: "" }
+        { id: "p1", title: "Malware 1 New Infrastructure",         iocCount: 12, updatedLabel: "Updated 2h ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", hashes: "", notes: "", sources: "" },
+        { id: "p2", title: "Actor B C2 Expansion — Q4",            iocCount: 8,  updatedLabel: "Updated 5h ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", hashes: "", notes: "", sources: "" },
+        { id: "p3", title: "Phishing Wave — EU Targets",           iocCount: 23, updatedLabel: "Updated 1d ago",  status: "pipeline", pipelineStatus: "In Review",   threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", hashes: "", notes: "", sources: "" },
+        { id: "p4", title: "Ransomware Group X — New Domains",     iocCount: 5,  updatedLabel: "Updated 2d ago",  status: "pipeline", pipelineStatus: "In Review",   threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", hashes: "", notes: "", sources: "" },
+        { id: "p5", title: "SIG007 Dropper Infrastructure",        iocCount: 17, updatedLabel: "Updated 3d ago",  status: "pipeline", pipelineStatus: "In Progress", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", hashes: "", notes: "", sources: "" },
+        { id: "p6", title: "Actor A — Initial Access Broker Network", iocCount: 34, updatedLabel: "Ready 4d ago",  status: "published", pipelineStatus: "Ready", threatActor: "", malware: "", infrastructure: "", victims: "", miq: "", hashes: "", notes: "", sources: "" },
+        { id: "p7", title: "Malware Z — Loader Infrastructure",    iocCount: 19, updatedLabel: "Ready 1w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", hashes: "", notes: "", sources: "" },
+        { id: "p8", title: "CN Threat Cluster — Spearphish Domains", iocCount: 11, updatedLabel: "Ready 2w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "", infrastructure: "", victims: "", miq: "", hashes: "", notes: "", sources: "" },
+        { id: "p9", title: "RU APT — Credential Harvesting URLs",  iocCount: 28, updatedLabel: "Ready 3w ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",   infrastructure: "", victims: "", miq: "", hashes: "", notes: "", sources: "" },
+        { id: "p10", title: "SIG003 — Bad Domain Cluster Report",  iocCount: 9,  updatedLabel: "Ready 1mo ago", status: "published", pipelineStatus: "Ready", threatActor: "", malware: "",  infrastructure: "", victims: "", miq: "", hashes: "", notes: "", sources: "" }
     ];
 
     function loadIrlProjects() {
@@ -974,13 +986,20 @@ function bindControls() {
 
     function renderIrlProjects() {
         const projects = loadIrlProjects();
-        const pipelineProjects = projects.filter(p => p.status === "pipeline");
-        const publishedProjects = projects.filter(p => p.status === "published");
+        const inProgressProjects = projects.filter(p => p.pipelineStatus === "In Progress");
+        const inReviewProjects   = projects.filter(p => p.pipelineStatus === "In Review");
+        const publishedProjects  = projects.filter(p => p.pipelineStatus === "Ready");
 
         irlPipelinePanel.querySelector(".irl-project-list").innerHTML =
-            pipelineProjects.map(buildProjectRow).join("");
+            inProgressProjects.map(buildProjectRow).join("");
+        irlReviewPanel.querySelector(".irl-project-list").innerHTML =
+            inReviewProjects.map(buildProjectRow).join("");
         irlPublishedPanel.querySelector(".irl-project-list").innerHTML =
             publishedProjects.map(buildProjectRow).join("");
+
+        document.getElementById("irl-pipeline-count").textContent = inProgressProjects.length;
+        document.getElementById("irl-review-count").textContent   = inReviewProjects.length;
+        document.getElementById("irl-ready-count").textContent    = publishedProjects.length;
 
         document.querySelectorAll(".irl-project-item").forEach((btn) => {
             btn.addEventListener("click", () => {
@@ -1007,8 +1026,15 @@ function bindControls() {
         document.getElementById("proj-infrastructure").value  = project.infrastructure;
         document.getElementById("proj-victims").value         = project.victims;
         document.getElementById("proj-miq").value             = project.miq;
+        document.getElementById("proj-hashes").value          = project.hashes || "";
         document.getElementById("proj-notes").value           = project.notes;
         document.getElementById("proj-sources").value         = project.sources || "";
+        // Show AI suggestion box only for Ready projects
+        const suggestionSection = document.getElementById("irl-suggestion-section");
+        if (suggestionSection) suggestionSection.hidden = (project.pipelineStatus !== "Ready");
+        document.getElementById("proj-irl-suggestion").value  = project.irlSuggestion || "Just imagine this is the output of the AI API";
+        // Populate MITRE if the instance is ready
+        if (window.__editMitreInstance) setMitreSelected(window.__editMitreInstance, project.mitre || []);
         projectModal.hidden = false;
     }
 
@@ -1016,6 +1042,13 @@ function bindControls() {
         projectModal.hidden = true;
         activeProjectId = null;
     }
+
+    document.getElementById("proj-status").addEventListener("change", () => {
+        const suggestionSection = document.getElementById("irl-suggestion-section");
+        if (suggestionSection) {
+            suggestionSection.hidden = document.getElementById("proj-status").value !== "Ready";
+        }
+    });
 
     document.getElementById("project-discard-btn").addEventListener("click", closeProjectModal);
     document.getElementById("project-discard-btn-2").addEventListener("click", closeProjectModal);
@@ -1037,8 +1070,11 @@ function bindControls() {
         project.infrastructure = document.getElementById("proj-infrastructure").value.trim();
         project.victims        = document.getElementById("proj-victims").value.trim();
         project.miq            = document.getElementById("proj-miq").value.trim();
+        project.hashes         = document.getElementById("proj-hashes").value.trim();
         project.notes          = document.getElementById("proj-notes").value.trim();
         project.sources        = document.getElementById("proj-sources").value.trim();
+        project.irlSuggestion  = document.getElementById("proj-irl-suggestion").value.trim();
+        project.mitre          = window.__pendingEditMitre || project.mitre || [];
         project.updatedLabel   = "Updated just now";
 
         saveIrlProjects(projects);
@@ -1069,6 +1105,7 @@ function bindControls() {
         document.getElementById("new-proj-infrastructure").value = "";
         document.getElementById("new-proj-victims").value        = "";
         document.getElementById("new-proj-miq").value            = "";
+        document.getElementById("new-proj-hashes").value         = "";
         document.getElementById("new-proj-notes").value          = "";
         document.getElementById("new-proj-sources").value        = "";
         newProjectModal.hidden = false;
@@ -1101,8 +1138,10 @@ function bindControls() {
             infrastructure: document.getElementById("new-proj-infrastructure").value.trim(),
             victims:        document.getElementById("new-proj-victims").value.trim(),
             miq:            document.getElementById("new-proj-miq").value.trim(),
+            hashes:         document.getElementById("new-proj-hashes").value.trim(),
             notes:          document.getElementById("new-proj-notes").value.trim(),
-            sources:        document.getElementById("new-proj-sources").value.trim()
+            sources:        document.getElementById("new-proj-sources").value.trim(),
+            mitre:          window.__pendingNewMitre || []
         };
         const projects = loadIrlProjects();
         projects.push(newProject);
@@ -1122,6 +1161,8 @@ function bindControls() {
 
         if (newStatus === "Ready") {
             irlPublishedTab.click();
+        } else if (newStatus === "In Review") {
+            irlReviewTab.click();
         } else {
             irlPipelineTab.click();
         }
@@ -1146,6 +1187,232 @@ function bindControls() {
     document.getElementById("completed-table").addEventListener("click", handleTableClick);
     document.getElementById("pending-table").addEventListener("input", handleTableInput);
     document.getElementById("completed-table").addEventListener("input", handleTableInput);
+
+    // ── MITRE ATT&CK ──────────────────────────────────────────
+    let mitreData = [
+        {
+            "id": "TA0001", "label": "Initial Access", "type": "tactic",
+            "children": [
+                { "id": "T1566", "label": "Phishing", "type": "technique", "children": [
+                    { "id": "T1566.001", "label": "Spearphishing Attachment", "type": "sub-technique" },
+                    { "id": "T1566.002", "label": "Spearphishing Link", "type": "sub-technique" },
+                    { "id": "T1566.003", "label": "Spearphishing via Service", "type": "sub-technique" }
+                ]},
+                { "id": "T1190", "label": "Exploit Public-Facing Application", "type": "technique", "children": [] }
+            ]
+        },
+        {
+            "id": "TA0002", "label": "Execution", "type": "tactic",
+            "children": [
+                { "id": "T1059", "label": "Command and Scripting Interpreter", "type": "technique", "children": [
+                    { "id": "T1059.001", "label": "PowerShell", "type": "sub-technique" },
+                    { "id": "T1059.003", "label": "Windows Command Shell", "type": "sub-technique" }
+                ]}
+            ]
+        }
+    ];
+
+    // Each MITRE instance: { prefix, selectedIds (Set), tree el, tags el, trigger el, label el, panel el, search el }
+    function createMitreInstance(prefix) {
+        const inst = {
+            prefix,
+            selectedIds: new Set(),
+            treeEl:    document.getElementById(`${prefix}-mitre-tree`),
+            tagsEl:    document.getElementById(`${prefix}-mitre-tags`),
+            triggerEl: document.getElementById(`${prefix}-mitre-trigger`),
+            labelEl:   document.getElementById(`${prefix}-mitre-label`),
+            panelEl:   document.getElementById(`${prefix}-mitre-panel`),
+            searchEl:  document.getElementById(`${prefix}-mitre-search`)
+        };
+
+        inst.triggerEl.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const isOpen = !inst.panelEl.hidden;
+            closeAllMitrePanels();
+            if (!isOpen) {
+                inst.panelEl.hidden = false;
+                inst.triggerEl.classList.add("is-open");
+                inst.searchEl.value = "";
+                renderMitreTree(inst, "");
+                inst.searchEl.focus();
+            }
+        });
+
+        inst.panelEl.addEventListener("click", (e) => {
+            e.stopPropagation();
+        });
+
+        inst.searchEl.addEventListener("input", () => {
+            renderMitreTree(inst, inst.searchEl.value.trim().toLowerCase());
+        });
+
+        return inst;
+    }
+
+    function closeAllMitrePanels() {
+        ["new", "edit"].forEach(p => {
+            const panel   = document.getElementById(`${p}-mitre-panel`);
+            const trigger = document.getElementById(`${p}-mitre-trigger`);
+            if (panel)   panel.hidden = true;
+            if (trigger) trigger.classList.remove("is-open");
+        });
+    }
+
+    document.addEventListener("click", closeAllMitrePanels);
+
+    function flattenMitre(data) {
+        const flat = [];
+        data.forEach(tactic => {
+            flat.push(tactic);
+            (tactic.children || []).forEach(tech => {
+                flat.push(tech);
+                (tech.children || []).forEach(sub => flat.push(sub));
+            });
+        });
+        return flat;
+    }
+
+    function renderMitreTree(inst, query) {
+        inst.treeEl.innerHTML = "";
+        const data = mitreData;
+
+        data.forEach(tactic => {
+            const matchesTactic = !query || tactic.label.toLowerCase().includes(query) || tactic.id.toLowerCase().includes(query);
+            const matchingTechs = (tactic.children || []).filter(tech => {
+                if (!query) return true;
+                const techMatch = tech.label.toLowerCase().includes(query) || tech.id.toLowerCase().includes(query);
+                const subMatch  = (tech.children || []).some(s => s.label.toLowerCase().includes(query) || s.id.toLowerCase().includes(query));
+                return techMatch || subMatch;
+            });
+
+            if (!matchesTactic && matchingTechs.length === 0) return;
+
+            const tacticEl = document.createElement("div");
+            tacticEl.className = "mitre-tactic" + (query ? " is-open" : "");
+
+            const tacticLabel = document.createElement("div");
+            tacticLabel.className = "mitre-tactic-label";
+            tacticLabel.innerHTML = `<span class="mitre-tactic-arrow">›</span>${escapeHtml(tactic.id)} — ${escapeHtml(tactic.label)}`;
+            tacticLabel.addEventListener("click", () => tacticEl.classList.toggle("is-open"));
+
+            const childrenEl = document.createElement("div");
+            childrenEl.className = "mitre-tactic-children";
+
+            const techs = query ? matchingTechs : (tactic.children || []);
+            techs.forEach(tech => {
+                const techEl = document.createElement("div");
+                techEl.className = "mitre-technique";
+
+                const techRow = makeMitreRow(inst, tech, false);
+                techEl.appendChild(techRow);
+
+                const subs = query
+                    ? (tech.children || []).filter(s => !query || s.label.toLowerCase().includes(query) || s.id.toLowerCase().includes(query))
+                    : (tech.children || []);
+
+                subs.forEach(sub => {
+                    techEl.appendChild(makeMitreRow(inst, sub, true));
+                });
+
+                childrenEl.appendChild(techEl);
+            });
+
+            tacticEl.appendChild(tacticLabel);
+            tacticEl.appendChild(childrenEl);
+            inst.treeEl.appendChild(tacticEl);
+        });
+    }
+
+    function makeMitreRow(inst, item, isSub) {
+        const row = document.createElement("label");
+        row.className = "mitre-row" + (isSub ? " is-sub" : "");
+
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = inst.selectedIds.has(item.id);
+        cb.addEventListener("change", (e) => {
+            e.stopPropagation();
+            if (cb.checked) {
+                inst.selectedIds.add(item.id);
+            } else {
+                inst.selectedIds.delete(item.id);
+            }
+            updateMitreTags(inst);
+        });
+
+        const idSpan = document.createElement("span");
+        idSpan.className = "mitre-row-id";
+        idSpan.textContent = item.id;
+
+        const labelSpan = document.createElement("span");
+        labelSpan.className = "mitre-row-label";
+        labelSpan.textContent = item.label;
+
+        row.appendChild(cb);
+        row.appendChild(idSpan);
+        row.appendChild(labelSpan);
+        return row;
+    }
+
+    function updateMitreTags(inst) {
+        inst.tagsEl.innerHTML = "";
+        const flat = flattenMitre(mitreData);
+        const count = inst.selectedIds.size;
+
+        inst.labelEl.textContent = count > 0 ? `${count} selected` : "Select techniques…";
+        inst.labelEl.classList.toggle("has-selection", count > 0);
+
+        inst.selectedIds.forEach(id => {
+            const item = flat.find(f => f.id === id);
+            if (!item) return;
+            const tag = document.createElement("span");
+            tag.className = "mitre-tag";
+            tag.innerHTML = `${escapeHtml(item.id)} <button class="mitre-tag-remove" type="button" aria-label="Remove ${escapeHtml(item.id)}">✕</button>`;
+            tag.querySelector(".mitre-tag-remove").addEventListener("click", () => {
+                inst.selectedIds.delete(id);
+                // Refresh checkboxes in open panel
+                if (!inst.panelEl.hidden) renderMitreTree(inst, inst.searchEl.value.trim().toLowerCase());
+                updateMitreTags(inst);
+            });
+            inst.tagsEl.appendChild(tag);
+        });
+    }
+
+    function getMitreSelected(inst) {
+        return [...inst.selectedIds];
+    }
+
+    function setMitreSelected(inst, ids) {
+        inst.selectedIds = new Set(ids || []);
+        updateMitreTags(inst);
+    }
+
+    function resetMitreInstance(inst) {
+        inst.selectedIds = new Set();
+        inst.panelEl.hidden = true;
+        inst.triggerEl.classList.remove("is-open");
+        updateMitreTags(inst);
+    }
+
+    const newMitre  = createMitreInstance("new");
+    const editMitre = createMitreInstance("edit");
+    window.__editMitreInstance = editMitre;
+
+    // Capture-phase listeners so mitre IDs are written before the save handlers run
+    document.getElementById("project-save-btn").addEventListener("click", () => {
+        window.__pendingEditMitre = getMitreSelected(editMitre);
+    }, true);
+
+    window.__pendingNewMitre = [];
+    document.getElementById("new-project-save-btn").addEventListener("click", () => {
+        window.__pendingNewMitre = getMitreSelected(newMitre);
+    }, true);
+
+    // Reset new-project MITRE each time the modal opens
+    document.getElementById("new-project-btn").addEventListener("click", () => {
+        resetMitreInstance(newMitre);
+        window.__pendingNewMitre = [];
+    });
 }
 
 function initializeApp() {
